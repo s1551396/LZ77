@@ -37,6 +37,9 @@ void LZ77(char S[size], int len, int window, LDPair &output) {
 			if (window + l < len) {
 				c = S[window+l];
 			}
+			else {
+				l2--; // Decrement length to avoid duplicating last symbol
+			}
 		}
 		if (window + l >= len) {
 			c = S[len-1];
