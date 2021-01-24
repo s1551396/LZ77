@@ -13,10 +13,10 @@ void LZ77(char S[size], int len, int window, LDPair &output);
 int LZ77Decomp(LDPair input, char buffer[size], int window, int len);
 
 int main() {
-	string text;
-    string fileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/Canterbury/xargs.1";
-    string compFileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/CanterburyComp/xargs.1";
-    string decompFileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/CanterburyDecomp/xargs.1";
+    string text;
+    string fileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/Canterbury/alice29.txt";
+    string compFileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/CanterburyComp/alice29.txt";
+    string decompFileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/CanterburyDecomp/alice29.txt";
     ifstream file(fileName, ios::in | ios::binary);
     fstream fileComp(compFileName, fstream::out | fstream::in| ios::binary);
     int j;
@@ -100,6 +100,10 @@ int main() {
 		o = (uint8_t)fileComp.get();
 		l = (uint8_t)fileComp.get();
 		s = fileComp.get();
+
+		if (fileComp.peek() == EOF) {
+			j += 1;
+		}
 
 		input.set(o, l, s);
 
