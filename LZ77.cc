@@ -1,32 +1,29 @@
-#include <iostream>
-#include <string>
+// Compresses string in S[size] to an LDPair in output.
+#include <stdint.h>
 #include "LZ77.h"
 
-#define size 100
+#define size 1024
 
-using namespace std;
-
-void LZ77(char S[size], int len, int window, LDPair &output) {
+void LZ77(LDPair &output, char buffer[size], int window, int len) {
 	#pragma HLS INLINE
 	uint8_t o = 0, l = 0, o2 = 0, l2 = 0;
-	char c = S[window];
-	int i, j, k, m = 0;
+	char c = buffer[window];
 
 	l = l2 = o2 = 0;
 
-	for (j = 0; j < len; j++) {
-		if ((l == 0 && j >= window) || window + j > len) {
+	for (int i = 0; i < len; i++) {
+		if ((l == 0 && i >= window) || window + i > len) {
 			break;
 		}
-		if (S[j] == S[window+l]) {
+		if (buffer[i] == buffer[window+l]) {
 			if (l <= 0) {
-				o = window-j;
+				o = window-i;
 			}
 			l++;
 		}
 		else {
 			if (l > 0) {
-				j -= l; // Reset search to character right past previous match
+				i -= l; // Reset search to character right past previous match
 			}
 			l = 0;
 			o = 0;
@@ -35,14 +32,14 @@ void LZ77(char S[size], int len, int window, LDPair &output) {
 			l2 = l;
 			o2 = o;
 			if (window + l < len) {
-				c = S[window+l];
+				c = buffer[window+l];
 			}
 			else {
 				l2--; // Decrement length to avoid duplicating last symbol
 			}
 		}
 		if (window + l >= len) {
-			c = S[len-1];
+			c = buffer[len-1];
 			break;
 		}
 	}

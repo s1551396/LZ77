@@ -1,11 +1,6 @@
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <iostream>
-#include <fstream>
-#include <cstring>
-#include <string>
 #include <cerrno>
 #include "LZ77.h"
 
@@ -13,33 +8,26 @@
 
 using namespace std;
 
-void LZ77(char S[size], int len, int window, LDPair &output);
+void LZ77(LDPair &output, char buffer[size], int window, int len);
 int LZ77Decomp(LDPair input, char buffer[size], int window, int len);
 
 int main() {
-	string text;
     const char* fileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/Canterbury/alice29.txt";
     const char* compFileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/CanterburyComp/alice29.txt";
     const char* decompFileName = "C:/Users/Steffens/Desktop/Map/School/CS_Master_3de_jaar/CanterburyDecomp/alice29.txt";
-    //ifstream file(fileName, ios::in | ios::binary);
     int fd = open(fileName, O_RDONLY | O_BINARY);
     int fdComp = open(compFileName, O_WRONLY | O_BINARY);
     int fdDecomp;
-    //fstream fileComp(compFileName, fstream::out | fstream::in| ios::binary);
-    int j;
+    int i, j;
     uint8_t o, l;
     char s;
 	char buffer[size] = {'\0'};
-	char buffer2[3];
-	char S3[size];
+	char LDPairbuffer[3];
 	int len = size;
-	int newCharacters;
+	int newChars;
 	const int window = 255;
 	int window2 = 0;			// Used during compression when window isn't filled yet
-	LDPair output;
-	char output2[3];
-	LDPair input;
-	int temp;
+	LDPair IOLDPair;
 
 	if (fd == -1) {
 		cerr << "Read failed: " << strerror(errno);
@@ -50,23 +38,19 @@ int main() {
 		return 1;
 	}
 
-	//if(!file || file.fail() || !file.is_open()) {
-		//cerr << "Read failed: " << strerror(errno);
-		//return 1;
-	//}
 
 	// Compress
-	ftruncate(fdComp, 0);
+	ftruncate(fdComp, 0);		// Clear file before writing to it.
 
-	newCharacters = 0;
-	while (newCharacters < size) {
-		temp = read(fd, buffer+newCharacters, size-newCharacters);
-		if (temp <= 0)
+	newChars = 0;
+	while (newChars < size) {
+		i = read(fd, buffer+newChars, size-newChars);
+		if (i <= 0)
 			break;
-		newCharacters += temp;
+		newChars += i;
 	}
-	len -= size-newCharacters;
-	newCharacters = 0;
+	len -= size-newChars;
+	newChars = 0;
 
 	while (len > window2) {
 
@@ -74,50 +58,41 @@ int main() {
 			j = 5;
 		}
 
-		LZ77(buffer, len, window2, output);
+		LZ77(IOLDPair, buffer, window2, len);
 
-		output2[0] = output.offset;
-		output2[1] = output.length;
-		output2[2] = output.symbol;
+		LDPairbuffer[0] = IOLDPair.offset;
+		LDPairbuffer[1] = IOLDPair.length;
+		LDPairbuffer[2] = IOLDPair.symbol;
 
 
-		if(write(fdComp, output2, 3) == -1) {
+		if(write(fdComp, LDPairbuffer, 3) == -1) {
 			cerr << "Write failed: " << strerror(errno);
 			return 1;
 		}
 
 
-		window2 += output.length+1;
+		window2 += IOLDPair.length+1;
 		if (window2 >= window) {
-			newCharacters = window2 - window;
+			newChars = window2 - window;
 			window2 = window;
 		}
 
-		for (int i = 0; i < len-newCharacters; i++) {
-			buffer[i] = buffer[i+newCharacters];
+		for (i = 0; i < len-newChars; i++) {
+			buffer[i] = buffer[i+newChars];
 		}
 
-		while (newCharacters > 0) {
-			temp = read(fd, buffer+size-newCharacters, newCharacters);
-			if	(temp <= 0)
+		while (newChars > 0) {
+			i = read(fd, buffer+size-newChars, newChars);
+			if	(i <= 0)
 				break;
-			newCharacters -= temp;
+			newChars -= i;
 		}
-		len -= newCharacters;
-		newCharacters = 0;
+		len -= newChars;
+		newChars = 0;
 	}
 
 	close(fd);
 	close(fdComp);
-
-	//if(!fileComp || fileComp.fail() || !fileComp.is_open()) {
-		//cerr << "Write failed: " << strerror(errno);
-		//return 1;
-	//}
-
-	//file.close();
-	//fileComp.close();
-
 
 
 	// Decompress
@@ -125,53 +100,48 @@ int main() {
 	fdDecomp = open(decompFileName, O_WRONLY | O_BINARY);
 	ftruncate(fdDecomp, 0);
 
-	//fileComp.seekg(0);
-	//fileComp(compFileName, fstream::in | ios::binary);
-	//fstream fileDecomp(decompFileName, fstream::out | ios::binary);
-
-	for (int i = 0; i < size; i++) {
+	for (i = 0; i < size; i++) {
 		buffer[i] = '\0';
 	}
 
-
 	bool finished = false;
-	for (int i = 0; i < 3; i++) {
-		if (!read(fdComp, buffer2+i, 1)) {
+	for (i = 0; i < 3; i++) {
+		if (!read(fdComp, LDPairbuffer+i, 1)) {
 			finished = true;
 			break;
 		}
 	}
 	while (!finished) {
 
-		o = (uint8_t)buffer2[0];
-		l = (uint8_t)buffer2[1];
-		s = buffer2[2];
+		o = (uint8_t)LDPairbuffer[0];
+		l = (uint8_t)LDPairbuffer[1];
+		s = LDPairbuffer[2];
 
-		input.set(o, l, s);
+		IOLDPair.set(o, l, s);
 
-		len = LZ77Decomp(input, buffer, window, size);
+		len = LZ77Decomp(IOLDPair, buffer, window, size);
 
-		temp = 1;
+		i = 1;
 		j = 0;
-		while (temp > 0) {
-			temp = write(fdDecomp, buffer+window+j, len-j);
-			j += temp;
+		while (i > 0) {
+			i = write(fdDecomp, buffer+window+j, len-j);
+			j += i;
 		}
 
 		// Move last window characters to start of buffer
 		j = len;
-		for (int i = 0; i < window; i++) {
+		for (i = 0; i < window; i++) {
 			buffer[i] = buffer[j];
 			j++;
 		}
 
 		// Clear buffer except for first window characters
-		for (int i = window; i < size; i++) {
+		for (i = window; i < size; i++) {
 			buffer[i] = '\0';
 		}
 
-		for (int i = 0; i < 3; i++) {
-			if (!read(fdComp, buffer2+i, 1)) {
+		for (i = 0; i < 3; i++) {
+			if (!read(fdComp, LDPairbuffer+i, 1)) {
 				finished = true;
 				break;
 			}
